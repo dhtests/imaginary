@@ -27,8 +27,7 @@ jobs:
     steps:
       - name: Sync fork main with upstream
         run: |
-          result=$(gh api repos/${{ github.repository }}/merge-upstream \
-            -f branch=main --jq '.message' 2>&1)
-          echo "Sync result: $result"
+          gh api repos/${{ github.repository }}/merge-upstream \
+            -f branch=main 2>&1 || true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
