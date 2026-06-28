@@ -13,3 +13,4 @@ def chunk(lst: list, size: int) -> list:
 
 def flatten(lst: list) -> list:
     return [item for sublist in lst for item in sublist]
+MAX_CONNECTIONS = 10
