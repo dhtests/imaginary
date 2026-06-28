@@ -1,0 +1,32 @@
+# release.yml
+#
+# PURPOSE: Cut a GitHub release when a version tag is pushed.
+#
+# Runs ONLY in the origin repo (dhtests/imaginary).
+# Is a no-op in forks — forks should never cut releases.
+
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+if: github.event.repository.fork == false
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create GitHub release
+        run: |
+          gh release create "${{ github.ref_name }}" \
+            --title "Release ${{ github.ref_name }}" \
+            --generate-notes
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

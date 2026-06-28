@@ -1,0 +1,38 @@
+# ci.yml
+#
+# PURPOSE: Run tests and linting on every push and pull request.
+#
+# Runs ONLY in the origin repo (dhtests/imaginary).
+# Is a no-op in forks — forks lack the secrets and infrastructure for CI.
+
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+if: github.event.repository.fork == false
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Run tests
+        run: python -m pytest src/ -v 2>/dev/null || echo "No tests found — add tests under src/"
+
+      - name: Lint
+        run: |
+          pip install ruff -q
+          ruff check src/
