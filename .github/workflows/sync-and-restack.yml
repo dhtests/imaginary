@@ -108,7 +108,8 @@ jobs:
 
               upstream=$(gh api repos/${{ github.repository }} --jq '.parent.full_name' 2>/dev/null)
               fork_owner=$(gh api repos/${{ github.repository }} --jq '.owner.login' 2>/dev/null)
-              pr_number=$(gh pr list --repo "$upstream" --head "${fork_owner}:${branch}" --json number --jq '.[0].number' 2>/dev/null)
+              pr_number=$(gh pr list --repo "$upstream" --json number,headRefName,headRepositoryOwner \
+                --jq ".[] | select(.headRefName == \"$branch\" and .headRepositoryOwner.login == \"$fork_owner\") | .number" 2>/dev/null)
               if [ -n "$pr_number" ] && [ "$pr_number" != "null" ]; then
                 gh pr comment "$pr_number" --repo "$upstream" --body "⚠️ **Auto-restack conflict detected** — branch left untouched. Run \`git restack\` locally, fix conflicts, \`git add .\`, \`git restack --continue\`, then push."
               fi
