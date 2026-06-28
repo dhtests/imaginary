@@ -1,14 +1,16 @@
-# restack-prs.yml
+# sync-and-restack.yml
 #
-# PURPOSE: Automatically restack all fork branches when main is updated.
+# PURPOSE: Keep a fork current with upstream and restack all PR branches.
 #
 # Runs ONLY in forks (github.event.repository.fork == true).
-# Is a no-op in the origin repo (dhtests/imaginary).
-# No secrets or tokens need to be configured — GITHUB_TOKEN is automatic.
+# Is a no-op in the origin repo.
+# No secrets or tokens required — GITHUB_TOKEN is automatic.
+# Note: sync only works for non-workflow file changes. For workflow file
+#       updates, sync the fork manually once via GitHub's "Sync fork" button.
 #
-# ON SUCCESS: branch is restacked and pushed. PR can be merged normally.
-# ON CONFLICT: branch is left untouched. A comment is posted on the PR and
-#   a failed commit status blocks merging until the author resolves it.
+# ON SUCCESS: fork main is synced and all PR branches are restacked and pushed.
+# ON CONFLICT: conflicting branches are left untouched, a PR comment is posted,
+#   and a failed commit status blocks merging until the author resolves it.
 #
 # CONFLICT RESOLUTION (for PR authors):
 #   git pull
@@ -18,12 +20,11 @@
 #   git restack --continue   # completes the cherry-pick
 #   git push --force-with-lease origin <branch>
 
-name: Restack fork branches
+name: Sync and restack
 
 on:
-  push:
-    branches:
-      - main
+  schedule:
+    - cron: '*/3 * * * *'
   workflow_dispatch:
 
 permissions:
@@ -32,17 +33,35 @@ permissions:
   pull-requests: write
 
 jobs:
-  restack:
+  sync-and-restack:
     if: github.event.repository.fork == true
     runs-on: ubuntu-latest
     steps:
+      - name: Sync fork main with upstream
+        id: sync
+        run: |
+          before=$(gh api repos/${{ github.repository }}/branches/main --jq '.commit.sha')
+          gh api repos/${{ github.repository }}/merge-upstream -f branch=main 2>&1 || true
+          after=$(gh api repos/${{ github.repository }}/branches/main --jq '.commit.sha')
+          if [ "$before" != "$after" ]; then
+            echo "moved=true" >> $GITHUB_OUTPUT
+            echo "Main moved from $before to $after — will restack."
+          else
+            echo "moved=false" >> $GITHUB_OUTPUT
+            echo "Main unchanged — nothing to restack."
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Checkout repository
+        if: steps.sync.outputs.moved == 'true'
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Install git-restack
+        if: steps.sync.outputs.moved == 'true'
         run: |
           curl -fsSL \
             https://raw.githubusercontent.com/davidhadas/git-restack/main/git-restack \
@@ -50,11 +69,13 @@ jobs:
           chmod +x /usr/local/bin/git-restack
 
       - name: Configure git
+        if: steps.sync.outputs.moved == 'true'
         run: |
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git config user.name "github-actions[bot]"
 
       - name: Restack all branches
+        if: steps.sync.outputs.moved == 'true'
         run: |
           git fetch --all
 
