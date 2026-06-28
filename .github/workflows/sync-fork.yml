@@ -17,13 +17,12 @@ on:
     - cron: '*/3 * * * *'
   workflow_dispatch:
 
-if: github.event.repository.fork == true
-
 permissions:
   contents: write
 
 jobs:
   sync:
+    if: github.event.repository.fork == true
     runs-on: ubuntu-latest
     steps:
       - name: Sync fork main with upstream

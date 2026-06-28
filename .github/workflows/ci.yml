@@ -13,13 +13,12 @@ on:
       - main
   pull_request:
 
-if: github.event.repository.fork == false
-
 permissions:
   contents: read
 
 jobs:
   test:
+    if: github.event.repository.fork == false
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
